@@ -3,9 +3,11 @@
 
 	inputs = {
 		nixpkgs.url = "github:NixOS/nixpkgs/nixos-unstable";
+
+		obi-sync-src.follows = "/";
 	};
 
-	outputs = inputs@{ flake-parts, ... }:
+	outputs = inputs@{ flake-parts, obi-sync-src, ... }:
 		flake-parts.lib.mkFlake { inherit inputs; } {
 			imports = [
 				# To import a flake module
@@ -21,7 +23,15 @@
 				# system.
 
 				# Equivalent to  inputs'.nixpkgs.legacyPackages.hello;
-				packages.default = pkgs.hello;
+				packages.default = self'.packages.obi-sync;
+				packages.obi-sync = pkgs.buildGoModule {
+					pname = "obi-sync";
+					version = "v0.1.3";
+
+					src = obi-sync-src;
+
+					vendorSha256 = "sha256-A/WQ9GCGiA9rncGI+zTy/iqmaXsOa4TIU7XS9r6wMnQ=";
+				};
 			};
 			flake = {
 				# The usual flake attributes can be defined here, including system-
