@@ -39,9 +39,75 @@
 				};
 			};
 			flake = {
-				# The usual flake attributes can be defined here, including system-
-				# agnostic ones like nixosModule and system-enumerating ones, although
-				# those are more easily expressed in perSystem.
+				nixosModules.obi-sync-server = {config, pkgs, lib, cfg, ...}: {
+					options.services.obsidian-sync = {
+						enable = lib.mkEnableOption "obsidian-sync server";
+
+						package = lib.mkOption {
+							default = inputs.self.packages.${pkgs.system}.obi-sync;
+						};
+
+						dataDir = lib.mkOption {
+							default = "/var/lib/obsidian-sync/";
+						};
+
+						host = {
+							# The domain name or IP address of your server. Include port if not on 80 or 433. The default is localhost:3000
+							https = lib.mkEnableOption "https protocol";
+
+							host = lib.mkOption {
+								default = "localhost";
+							};
+							port = lib.mkOption {
+								default = "3000";
+							};
+						};
+
+						listenAddress = lib.mkOption {
+							default = "127.0.0.1:3000";
+							description = "Server listener address. The default is 127.0.0.1:3000";
+						};
+
+						signupKey = lib.mkOption {
+							default = null;
+							description = "Signup API is at /user/signup. This optionally restricts users who can sign up.";
+						};
+					};
+
+					config = let cfg = config.services.obsidian-sync; in lib.mkIf cfg.enable {
+						users.users.obsidian-sync = {
+							isSystemUser = true;
+							group = "obsidian-sync";
+							createHome = true;
+							home = "/var/lib/obsidian-sync";
+						};
+						users.groups.obsidian-sync = {};
+
+						systemd.services."obsidian-sync-server" = {
+							wantedBy = [ "default.target" ];
+							serviceConfig = {
+								User = "obsidian-sync";
+							};
+							environment = lib.mkMerge [
+								{
+									DATA_DIR = cfg.dataDir;
+									DOMAIN_NAME = let
+											protocol = if cfg.host.https then "https" else "http" ;
+										in "${protocol}://${cfg.host.host}:${cfg.host.port}"; # -
+
+									ADDR_HTTP = cfg.listenAddress;
+								}
+								(lib.mkIf (cfg.signupKey != null) {
+									SIGNUP_KEY = cfg.signupKey;
+								})
+							];
+
+							script = "${cfg.package}/bin/obsidian-sync";
+						};
+
+						# TODO, configure backups.
+					};
+				};
 
 			};
 		};
