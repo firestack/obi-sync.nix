@@ -60,9 +60,10 @@
 							# The domain name or IP address of your server. Include port if not on 80 or 433. The default is localhost:3000
 							https = lib.mkEnableOption "https protocol";
 
-							host = lib.mkOption {
+							name = lib.mkOption {
 								default = "localhost";
 							};
+
 							port = lib.mkOption {
 								default = "3000";
 							};
@@ -102,11 +103,12 @@
 							environment = lib.mkMerge [
 								{
 									DATA_DIR = cfg.dataDir;
+									ADDR_HTTP = cfg.listenAddress;
 									DOMAIN_NAME = let
 											protocol = if cfg.host.https then "https" else "http" ;
-										in "${protocol}://${cfg.host.host}:${cfg.host.port}"; # -
+											url = "${protocol}://${cfg.host.name}:${cfg.host.port}";
+										in url;
 
-									ADDR_HTTP = cfg.listenAddress;
 								}
 								(lib.mkIf (cfg.signupKey != null) {
 									SIGNUP_KEY = cfg.signupKey;
