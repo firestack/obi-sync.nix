@@ -1,3 +1,6 @@
+# Nix Build Outputs
+result
+
 # Nixos VM on Darwin images
 nixos.qcow2
 
