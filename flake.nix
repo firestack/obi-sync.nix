@@ -36,8 +36,11 @@
 					src = obi-sync-src;
 
 					vendorSha256 = "sha256-A/WQ9GCGiA9rncGI+zTy/iqmaXsOa4TIU7XS9r6wMnQ=";
+
+					meta.mainProgram = "obsidian-sync";
 				};
 			};
+
 			flake = {
 				nixosModules.obsidian-sync-server = {config, pkgs, lib, cfg, ...}: {
 					options.services.obsidian-sync.server = {
@@ -108,7 +111,7 @@
 								})
 							];
 
-							script = "${cfg.package}/bin/obsidian-sync";
+							script = "${cfg.package}/bin/${cfg.package.meta.mainProgram}";
 						};
 
 						# TODO, configure backups.
