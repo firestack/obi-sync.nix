@@ -75,13 +75,19 @@
 					};
 
 					config = let cfg = config.services.obsidian-sync; in lib.mkIf cfg.enable {
+						users.groups.obsidian-sync = {};
 						users.users.obsidian-sync = {
 							isSystemUser = true;
-							group = "obsidian-sync";
+
 							createHome = true;
 							home = "/var/lib/obsidian-sync";
+
+							group = "obsidian-sync";
+
+							# Add `signup` tool to PATH for the user
+							packages = [ cfg.package ];
 						};
-						users.groups.obsidian-sync = {};
+
 
 						systemd.services."obsidian-sync-server" = {
 							wantedBy = [ "default.target" ];
