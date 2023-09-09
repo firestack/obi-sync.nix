@@ -115,10 +115,10 @@
 
 							script = "${cfg.package}/bin/${cfg.package.meta.mainProgram}";
 						};
-
-						# TODO, configure backups.
 					};
 				};
+
+						# TODO, configure backups.
 
 				nixosModules.vm = {...}: {
 					system.stateVersion = "22.05";
