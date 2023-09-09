@@ -1,3 +1,6 @@
+# Nixos VM on Darwin images
+nixos.qcow2
+
+# obi-sync runtime data files
 *.db
 *.gob
-nixos.qcow2
