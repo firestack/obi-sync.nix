@@ -109,6 +109,41 @@
 					};
 				};
 
+				nixosModules.vm = {...}: {
+					system.stateVersion = "22.05";
+
+					# Configure networking
+					networking.useDHCP = false;
+					networking.interfaces.eth0.useDHCP = true;
+
+					# Create user "test"
+					services.getty.autologinUser = "test";
+					users.users.test.isNormalUser = true;
+
+					# Enable passwordless ‘sudo’ for the "test" user
+					users.users.test.extraGroups = ["wheel"];
+					security.sudo.wheelNeedsPassword = false;
+
+					# Second Module
+
+					# Make VM output to the terminal instead of a separate window
+					virtualisation.vmVariant.virtualisation.graphics = false;
+				};
+
+				nixosConfigurations.obi-sync-server = inputs.nixpkgs.lib.nixosSystem {
+					system = "aarch64-linux";
+					modules = [
+						inputs.self.nixosModules.obi-sync-server
+						inputs.self.nixosModules.vm
+
+						{ virtualisation.vmVariant.virtualisation.host.pkgs = inputs.nixpkgs.legacyPackages.aarch64-darwin; }
+						{
+							services.obsidian-sync.enable = true;
+						}
+					];
+				};
+
+				packages.aarch64-darwin.darwinVM = inputs.self.nixosConfigurations.obi-sync-server.config.system.build.vm;
 			};
 		};
 }
