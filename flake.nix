@@ -39,8 +39,8 @@
 				};
 			};
 			flake = {
-				nixosModules.obi-sync-server = {config, pkgs, lib, cfg, ...}: {
-					options.services.obsidian-sync = {
+				nixosModules.obsidian-sync-server = {config, pkgs, lib, cfg, ...}: {
+					options.services.obsidian-sync.server = {
 						enable = lib.mkEnableOption "obsidian-sync server";
 
 						package = lib.mkOption {
@@ -74,7 +74,7 @@
 						};
 					};
 
-					config = let cfg = config.services.obsidian-sync; in lib.mkIf cfg.enable {
+					config = let cfg = config.services.obsidian-sync.server; in lib.mkIf cfg.enable {
 						users.groups.obsidian-sync = {};
 						users.users.obsidian-sync = {
 							isSystemUser = true;
@@ -136,20 +136,20 @@
 					virtualisation.vmVariant.virtualisation.graphics = false;
 				};
 
-				nixosConfigurations.obi-sync-server = inputs.nixpkgs.lib.nixosSystem {
+				nixosConfigurations.obsidian-sync-server = inputs.nixpkgs.lib.nixosSystem {
 					system = "aarch64-linux";
 					modules = [
-						inputs.self.nixosModules.obi-sync-server
+						inputs.self.nixosModules.obsidian-sync-server
 						inputs.self.nixosModules.vm
 
 						{ virtualisation.vmVariant.virtualisation.host.pkgs = inputs.nixpkgs.legacyPackages.aarch64-darwin; }
 						{
-							services.obsidian-sync.enable = true;
+							services.obsidian-sync.server.enable = true;
 						}
 					];
 				};
 
-				packages.aarch64-darwin.darwinVM = inputs.self.nixosConfigurations.obi-sync-server.config.system.build.vm;
+				packages.aarch64-darwin.darwinVM = inputs.self.nixosConfigurations.obsidian-sync-server.config.system.build.vm;
 			};
 		};
 }
