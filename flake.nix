@@ -67,6 +67,14 @@
 							port = lib.mkOption {
 								default = "3000";
 							};
+
+							socketAddr = lib.mkOption {
+								readOnly = true;
+							};
+
+							url = lib.mkOption {
+								readOnly = true;
+							};
 						};
 
 						listenAddress = lib.mkOption {
@@ -81,6 +89,11 @@
 					};
 
 					config = let cfg = config.services.obsidian-sync.server; in lib.mkIf cfg.enable {
+						services.obsidian-sync.server.host.socketAddr = "${cfg.host.name}:${cfg.host.port}";
+						services.obsidian-sync.server.host.url = let
+								protocol = if cfg.host.https then "https" else "http" ;
+							in "${protocol}://${cfg.host.socketAddr}";
+
 						users.groups.obsidian-sync = {};
 						users.users.obsidian-sync = {
 							isSystemUser = true;
@@ -104,11 +117,7 @@
 								{
 									DATA_DIR = cfg.dataDir;
 									ADDR_HTTP = cfg.listenAddress;
-									DOMAIN_NAME = let
-											protocol = if cfg.host.https then "https" else "http" ;
-											url = "${protocol}://${cfg.host.name}:${cfg.host.port}";
-										in url;
-
+									DOMAIN_NAME = cfg.host.url;
 								}
 								(lib.mkIf (cfg.signupKey != null) {
 									SIGNUP_KEY = cfg.signupKey;
