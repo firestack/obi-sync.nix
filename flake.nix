@@ -21,7 +21,9 @@
 				# 3. Add here: foo.flakeModule
 
 			];
+
 			systems = [ "x86_64-linux" "aarch64-linux" "aarch64-darwin" "x86_64-darwin" ];
+
 			perSystem = { config, self', inputs', pkgs, system, ... }: {
 				# Per-system attributes can be defined here. The self' and inputs'
 				# module parameters provide easy access to attributes of the same
@@ -36,11 +38,14 @@
 					src = obi-sync-src;
 
 					vendorSha256 = "sha256-A/WQ9GCGiA9rncGI+zTy/iqmaXsOa4TIU7XS9r6wMnQ=";
+
+					meta.mainProgram = "obsidian-sync";
 				};
 			};
+
 			flake = {
-				nixosModules.obi-sync-server = {config, pkgs, lib, cfg, ...}: {
-					options.services.obsidian-sync = {
+				nixosModules.obsidian-sync-server = {config, pkgs, lib, cfg, ...}: {
+					options.services.obsidian-sync.server = {
 						enable = lib.mkEnableOption "obsidian-sync server";
 
 						package = lib.mkOption {
@@ -55,11 +60,20 @@
 							# The domain name or IP address of your server. Include port if not on 80 or 433. The default is localhost:3000
 							https = lib.mkEnableOption "https protocol";
 
-							host = lib.mkOption {
+							name = lib.mkOption {
 								default = "localhost";
 							};
+
 							port = lib.mkOption {
 								default = "3000";
+							};
+
+							socketAddr = lib.mkOption {
+								readOnly = true;
+							};
+
+							url = lib.mkOption {
+								readOnly = true;
 							};
 						};
 
@@ -74,14 +88,25 @@
 						};
 					};
 
-					config = let cfg = config.services.obsidian-sync; in lib.mkIf cfg.enable {
+					config = let cfg = config.services.obsidian-sync.server; in lib.mkIf cfg.enable {
+						services.obsidian-sync.server.host.socketAddr = "${cfg.host.name}:${cfg.host.port}";
+						services.obsidian-sync.server.host.url = let
+								protocol = if cfg.host.https then "https" else "http" ;
+							in "${protocol}://${cfg.host.socketAddr}";
+
+						users.groups.obsidian-sync = {};
 						users.users.obsidian-sync = {
 							isSystemUser = true;
-							group = "obsidian-sync";
+
 							createHome = true;
 							home = "/var/lib/obsidian-sync";
+
+							group = "obsidian-sync";
+
+							# Add `signup` tool to PATH for the user
+							packages = [ cfg.package ];
 						};
-						users.groups.obsidian-sync = {};
+
 
 						systemd.services."obsidian-sync-server" = {
 							wantedBy = [ "default.target" ];
@@ -91,21 +116,50 @@
 							environment = lib.mkMerge [
 								{
 									DATA_DIR = cfg.dataDir;
-									DOMAIN_NAME = let
-											protocol = if cfg.host.https then "https" else "http" ;
-										in "${protocol}://${cfg.host.host}:${cfg.host.port}"; # -
-
 									ADDR_HTTP = cfg.listenAddress;
+									DOMAIN_NAME = cfg.host.url;
 								}
 								(lib.mkIf (cfg.signupKey != null) {
 									SIGNUP_KEY = cfg.signupKey;
 								})
 							];
 
-							script = "${cfg.package}/bin/obsidian-sync";
+							script = "${cfg.package}/bin/${cfg.package.meta.mainProgram}";
 						};
+					};
+				};
 
-						# TODO, configure backups.
+				# TODO, configure backups.
+
+				nixosModules.obsidian-sync-nginx = {lib, config, ...}: {
+					options.services.obsidian-sync.nginx = {
+						enable = lib.mkEnableOption "obsidian-sync nginx frontend";
+						publish.enable = lib.mkEnableOption "obsidian-sync publish nginx frontend";
+
+						extraConfig = lib.mkOption {
+							default = {};
+						};
+						forceSSL = lib.mkOption {
+							default = config.services.obsidian-sync.server.host.https;
+						};
+					};
+
+					config = let
+						cfg = config.services.obsidian-sync;
+					in lib.mkIf cfg.nginx.enable {
+						networking.firewall.allowedTCPPorts = [ 80 443 ];
+
+						services.nginx.enable = true;
+						services.nginx.virtualHosts.${cfg.server.host.name} = lib.mkMerge [
+							cfg.nginx.extraConfig
+							{
+								forceSSL = cfg.nginx.forceSSL;
+								locations."/" = {
+									proxyPass = "http://${cfg.server.host.socketAddr}";
+									proxyWebsockets = true;
+								};
+							}
+						];
 					};
 				};
 
@@ -130,20 +184,22 @@
 					virtualisation.vmVariant.virtualisation.graphics = false;
 				};
 
-				nixosConfigurations.obi-sync-server = inputs.nixpkgs.lib.nixosSystem {
+				nixosConfigurations.obsidian-sync-server = inputs.nixpkgs.lib.nixosSystem {
 					system = "aarch64-linux";
 					modules = [
-						inputs.self.nixosModules.obi-sync-server
+						inputs.self.nixosModules.obsidian-sync-server
+						inputs.self.nixosModules.obsidian-sync-nginx
 						inputs.self.nixosModules.vm
 
 						{ virtualisation.vmVariant.virtualisation.host.pkgs = inputs.nixpkgs.legacyPackages.aarch64-darwin; }
 						{
-							services.obsidian-sync.enable = true;
+							services.obsidian-sync.server.enable = true;
+							services.obsidian-sync.nginx.enable = true;
 						}
 					];
 				};
 
-				packages.aarch64-darwin.darwinVM = inputs.self.nixosConfigurations.obi-sync-server.config.system.build.vm;
+				packages.aarch64-darwin.darwinVM = inputs.self.nixosConfigurations.obsidian-sync-server.config.system.build.vm;
 			};
 		};
 }
