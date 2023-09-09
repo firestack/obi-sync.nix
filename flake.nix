@@ -131,7 +131,9 @@
 
 				# TODO, configure backups.
 
-				nixosModules.obsidian-sync-nginx = {lib, config, ...}: {
+				nixosModules.obsidian-sync-nginx = {lib, config, ...}: let
+					cfg = config.services.obsidian-sync;
+				in {
 					options.services.obsidian-sync.nginx = {
 						enable = lib.mkEnableOption "obsidian-sync nginx frontend";
 						publish.enable = lib.mkEnableOption "obsidian-sync publish nginx frontend";
@@ -144,23 +146,21 @@
 						};
 					};
 
-					config = let
-						cfg = config.services.obsidian-sync;
-					in lib.mkIf cfg.nginx.enable {
-						networking.firewall.allowedTCPPorts = [ 80 443 ];
-
-						services.nginx.enable = true;
-						services.nginx.virtualHosts.${cfg.server.host.name} = lib.mkMerge [
-							cfg.nginx.extraConfig
-							{
-								forceSSL = cfg.nginx.forceSSL;
-								locations."/" = {
-									proxyPass = "http://${cfg.server.host.socketAddr}";
-									proxyWebsockets = true;
-								};
-							}
-						];
-					};
+					config = lib.mkMerge [
+						{ services.obsidian-sync.nginx.enable = lib.mkDefault config.services.nginx.enable; }
+						(lib.mkIf cfg.nginx.enable {
+							services.nginx.virtualHosts.${cfg.server.host.name} = lib.mkMerge [
+								cfg.nginx.extraConfig
+								{
+									forceSSL = cfg.nginx.forceSSL;
+									locations."/" = {
+										proxyPass = "http://${cfg.server.host.socketAddr}";
+										proxyWebsockets = true;
+									};
+								}
+							];
+						})
+					];
 				};
 
 				nixosModules.vm = {...}: {
@@ -194,7 +194,7 @@
 						{ virtualisation.vmVariant.virtualisation.host.pkgs = inputs.nixpkgs.legacyPackages.aarch64-darwin; }
 						{
 							services.obsidian-sync.server.enable = true;
-							services.obsidian-sync.nginx.enable = true;
+							services.nginx.enable = true;
 						}
 					];
 				};
