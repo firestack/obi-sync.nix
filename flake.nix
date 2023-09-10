@@ -35,9 +35,12 @@
 				packages.obi-sync = pkgs.callPackage ./obi-sync.nix {
 					# src = obi-sync-src;
 					src = lib.cleanSourceWith {
-
-						filter = path: type: builtins.any (v: lib.strings.hasSuffix v path) ["go" "mod" "sum" "db" "gob"];
-						src = lib.cleanSource obi-sync-src;
+						src = obi-sync-src;
+						filter = path: type:
+							type == "directory" ||
+							builtins.any
+								(v: lib.strings.hasSuffix v path)
+								["go" "mod" "sum" "db" "gob"];
 					};
 					version = "v0.1.3";
 					vendorSha256 = "sha256-A/WQ9GCGiA9rncGI+zTy/iqmaXsOa4TIU7XS9r6wMnQ=";
