@@ -64,19 +64,9 @@
 						maxSitesPerUser = lib.mkOption { default = null; };
 
 						host = {
-							protocol = lib.mkOption {
-								default = "http";
-							};
-
-							# https = lib.mkEnableOption "https protocol";
-
-							name = lib.mkOption {
-								default = cfg.listen.host;
-							};
-
-							port = lib.mkOption {
-								default = cfg.listen.port;
-							};
+							protocol = lib.mkOption { default = "http"; };
+							name = lib.mkOption { default = cfg.listen.host; };
+							port = lib.mkOption { default = cfg.listen.port; };
 
 							url = lib.mkOption {
 								default = let
