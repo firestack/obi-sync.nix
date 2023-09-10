@@ -24,22 +24,23 @@
 
 			systems = [ "x86_64-linux" "aarch64-linux" "aarch64-darwin" "x86_64-darwin" ];
 
-			perSystem = { config, self', inputs', pkgs, system, ... }: {
+			perSystem = { config, self', inputs', pkgs, lib, system, ... }: {
 				# Per-system attributes can be defined here. The self' and inputs'
 				# module parameters provide easy access to attributes of the same
 				# system.
 
 				# Equivalent to  inputs'.nixpkgs.legacyPackages.hello;
 				packages.default = self'.packages.obi-sync;
-				packages.obi-sync = pkgs.buildGoModule {
-					pname = "obi-sync";
+				# packages.obi-sync = pkgs.callPackage ./obi-sync.nix { src = inputs'.obi-sync-src; };
+				packages.obi-sync = pkgs.callPackage ./obi-sync.nix {
+					# src = obi-sync-src;
+					src = lib.cleanSourceWith {
+
+						filter = path: type: builtins.any (v: lib.strings.hasSuffix v path) ["go" "mod" "sum" "db" "gob"];
+						src = lib.cleanSource obi-sync-src;
+					};
 					version = "v0.1.3";
-
-					src = obi-sync-src;
-
 					vendorSha256 = "sha256-A/WQ9GCGiA9rncGI+zTy/iqmaXsOa4TIU7XS9r6wMnQ=";
-
-					meta.mainProgram = "obsidian-sync";
 				};
 			};
 
@@ -188,6 +189,7 @@
 						inputs.self.nixosModules.obsidian-sync-nginx
 						{
 							services.obsidian-sync.server.enable = true;
+							services.obsidian-sync.server.host.name = "localhost";
 							services.nginx.enable = true;
 						}
 
